@@ -1,12 +1,12 @@
 python main.py --status train \
-		--train ../data/onto4ner.cn/train.char.bmes \
-		--dev ../data/onto4ner.cn/dev.char.bmes \
-		--test ../data/onto4ner.cn/test.char.bmes \
-		--savemodel ../data/onto4ner.cn/saved_model \
+		--train ./ResumeNER/train.char.bmes \
+		--dev ./ResumeNER/dev.char.bmes \
+		--test ./ResumeNER/test.char.bmes \
+		--savemodel ./data/resume_ner_model \
 
 
 # python main.py --status decode \
-# 		--raw ../data/onto4ner.cn/test.char.bmes \
-# 		--savedset ../data/onto4ner.cn/saved_model \
-# 		--loadmodel ../data/onto4ner.cn/saved_model.13.model \
-# 		--output ../data/onto4ner.cn/raw.out \
+# 		--raw ./ResumeNER/test.char.bmes \
+# 		--savedset ./data/resume_ner_model \
+# 		--loadmodel ./data/resume_ner_model.13.model \
+# 		--output ./data/resume_ner.raw.out \

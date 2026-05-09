@@ -4,7 +4,6 @@
 # @Last Modified by:   Jie Yang,     Contact: jieynlp@gmail.com
 # @Last Modified time: 2017-12-06 23:24:42
 import torch
-import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
@@ -12,7 +11,7 @@ import numpy as np
 class CharCNN(nn.Module):
     def __init__(self, alphabet_size, embedding_dim, hidden_dim, dropout, gpu):
         super(CharCNN, self).__init__()
-        print "build batched char cnn..."
+        print("build batched char cnn...")
         self.gpu = gpu
         self.hidden_dim = hidden_dim
         self.char_drop = nn.Dropout(dropout)
@@ -58,7 +57,6 @@ class CharCNN(nn.Module):
                 Variable(batch_size, word_length, char_hidden_dim)
             Note it only accepts ordered (length) variable, length size is recorded in seq_lengths
         """
-        batch_size = input.size(0)
         char_embeds = self.char_drop(self.char_embeddings(input))
         char_embeds = char_embeds.transpose(2,1).contiguous()
         char_cnn_out = self.char_cnn(char_embeds).transpose(2,1).contiguous()

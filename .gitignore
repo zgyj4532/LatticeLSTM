@@ -1,0 +1,9 @@
+#data
+*.vec
+*.model
+*.dset
+
+.vscode
+venv
+__pycache__
+*.pyc

@@ -1,9 +1,7 @@
 """Implementation of batch-normalized LSTM."""
 import torch
 from torch import nn
-import torch.autograd as autograd
-from torch.autograd import Variable
-from torch.nn import functional, init
+from torch.nn import init
 import numpy as np
 
 
@@ -34,13 +32,13 @@ class WordLSTMCell(nn.Module):
         """
         Initialize parameters following the way proposed in the paper.
         """
-        init.orthogonal(self.weight_ih.data)
+        init.orthogonal_(self.weight_ih.data)
         weight_hh_data = torch.eye(self.hidden_size)
         weight_hh_data = weight_hh_data.repeat(1, 3)
-        self.weight_hh.data.set_(weight_hh_data)
+        self.weight_hh.data.copy_(weight_hh_data)
         # The bias is just set to zero vectors.
         if self.use_bias:
-            init.constant(self.bias.data, val=0)
+            init.constant_(self.bias.data, val=0)
 
     def forward(self, input_, hx):
         """
@@ -59,7 +57,7 @@ class WordLSTMCell(nn.Module):
         bias_batch = (self.bias.unsqueeze(0).expand(batch_size, *self.bias.size()))
         wh_b = torch.addmm(bias_batch, h_0, self.weight_hh)
         wi = torch.mm(input_, self.weight_ih)
-        f, i, g = torch.split(wh_b + wi, split_size=self.hidden_size, dim=1)
+        f, i, g = torch.split(wh_b + wi, self.hidden_size, dim=1)
         c_1 = torch.sigmoid(f)*c_0 + torch.sigmoid(i)*torch.tanh(g)
         return c_1
 
@@ -101,21 +99,21 @@ class MultiInputLSTMCell(nn.Module):
         """
         Initialize parameters following the way proposed in the paper.
         """
-        init.orthogonal(self.weight_ih.data)
-        init.orthogonal(self.alpha_weight_ih.data)
+        init.orthogonal_(self.weight_ih.data)
+        init.orthogonal_(self.alpha_weight_ih.data)
 
         weight_hh_data = torch.eye(self.hidden_size)
         weight_hh_data = weight_hh_data.repeat(1, 3)
-        self.weight_hh.data.set_(weight_hh_data)
+        self.weight_hh.data.copy_(weight_hh_data)
 
         alpha_weight_hh_data = torch.eye(self.hidden_size)
         alpha_weight_hh_data = alpha_weight_hh_data.repeat(1, 1)
-        self.alpha_weight_hh.data.set_(alpha_weight_hh_data)
+        self.alpha_weight_hh.data.copy_(alpha_weight_hh_data)
 
         # The bias is just set to zero vectors.
         if self.use_bias:
-            init.constant(self.bias.data, val=0)
-            init.constant(self.alpha_bias.data, val=0)
+            init.constant_(self.bias.data, val=0)
+            init.constant_(self.alpha_bias.data, val=0)
 
     def forward(self, input_, c_input, hx):
         """
@@ -137,7 +135,7 @@ class MultiInputLSTMCell(nn.Module):
         bias_batch = (self.bias.unsqueeze(0).expand(batch_size, *self.bias.size()))
         wh_b = torch.addmm(bias_batch, h_0, self.weight_hh)
         wi = torch.mm(input_, self.weight_ih)
-        i, o, g = torch.split(wh_b + wi, split_size=self.hidden_size, dim=1)
+        i, o, g = torch.split(wh_b + wi, self.hidden_size, dim=1)
         i = torch.sigmoid(i)
         g = torch.tanh(g)
         o = torch.sigmoid(o)
@@ -148,7 +146,6 @@ class MultiInputLSTMCell(nn.Module):
             h_1 = o * torch.tanh(c_1)
         else:
             c_input_var = torch.cat(c_input, 0)
-            alpha_bias_batch = (self.alpha_bias.unsqueeze(0).expand(batch_size, *self.alpha_bias.size()))
             c_input_var = c_input_var.squeeze(1) ## (c_num, hidden_dim)
             alpha_wi = torch.addmm(self.alpha_bias, input_, self.alpha_weight_ih).expand(c_num, self.hidden_size)
             alpha_wh = torch.mm(c_input_var, self.alpha_weight_hh)
@@ -176,12 +173,12 @@ class LatticeLSTM(nn.Module):
     def __init__(self, input_dim, hidden_dim, word_drop, word_alphabet_size, word_emb_dim, pretrain_word_emb=None, left2right=True, fix_word_emb=True, gpu=True,  use_bias = True):
         super(LatticeLSTM, self).__init__()
         skip_direction = "forward" if left2right else "backward"
-        print "build LatticeLSTM... ", skip_direction, ", Fix emb:", fix_word_emb, " gaz drop:", word_drop
+        print("build LatticeLSTM... ", skip_direction, ", Fix emb:", fix_word_emb, " gaz drop:", word_drop)
         self.gpu = gpu
         self.hidden_dim = hidden_dim
         self.word_emb = nn.Embedding(word_alphabet_size, word_emb_dim)
         if pretrain_word_emb is not None:
-            print "load pretrain word emb...", pretrain_word_emb.shape
+            print("load pretrain word emb...", pretrain_word_emb.shape)
             self.word_emb.weight.data.copy_(torch.from_numpy(pretrain_word_emb))
 
         else:
@@ -214,7 +211,6 @@ class LatticeLSTM(nn.Module):
             skip_input: three dimension list, with length is seq_len. Each element is a list of matched word id and its length. 
                         example: [[], [[25,13],[2,3]]] 25/13 is word id, 2,3 is word length . 
         """
-        volatile_flag = skip_input_list[1]
         skip_input = skip_input_list[0]
         if not self.left2right:
             skip_input = convert_forward_gaz_to_backward(skip_input)
@@ -227,11 +223,8 @@ class LatticeLSTM(nn.Module):
         if hidden:
             (hx,cx)= hidden
         else:
-            hx = autograd.Variable(torch.zeros(batch_size, self.hidden_dim))
-            cx = autograd.Variable(torch.zeros(batch_size, self.hidden_dim))
-            if self.gpu:
-                hx = hx.cuda()
-                cx = cx.cuda()
+            hx = torch.zeros(batch_size, self.hidden_dim, device=input.device)
+            cx = torch.zeros(batch_size, self.hidden_dim, device=input.device)
         
         id_list = range(seq_len)
         if not self.left2right:
@@ -243,9 +236,7 @@ class LatticeLSTM(nn.Module):
             memory_out.append(cx)
             if skip_input[t]:
                 matched_num = len(skip_input[t][0])
-                word_var = autograd.Variable(torch.LongTensor(skip_input[t][0]),volatile =  volatile_flag)
-                if self.gpu:
-                    word_var = word_var.cuda()
+                word_var = torch.tensor(skip_input[t][0], dtype=torch.long, device=input.device)
                 word_emb = self.word_emb(word_var)
                 word_emb = self.word_dropout(word_emb)
                 ct = self.word_rnn(word_emb, (hx,cx))
