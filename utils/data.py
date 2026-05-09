@@ -46,6 +46,11 @@ class Data:
         self.dev_texts = []
         self.test_texts = []
         self.raw_texts = []
+        self.model_name = "BiLSTM_CRF"
+        self.char_model_name = "None"
+        self.train_file = None
+        self.dev_file = None
+        self.test_file = None
 
         self.train_Ids = []
         self.dev_Ids = []
